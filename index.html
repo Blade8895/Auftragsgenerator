@@ -1,0 +1,1077 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Auftragsformular</title>
+
+  <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+  <button id="themeToggle" class="theme-toggle" type="button" aria-label="Darkmode umschalten">
+    <span id="themeIcon">🌙</span>
+  </button>
+  
+  <!-- Such funktion -->
+	<div id="searchModal" class="modal" aria-hidden="true">
+	  <div class="modal-card modal-wide">
+		<div class="modal-head">
+		  <b>Aufträge durchsuchen</b>
+		  <button id="searchClose" class="modal-x" type="button">✕</button>
+		</div>
+
+		<div class="search-controls">
+		  <div class="field">
+			<label for="searchName">Name / Kunde</label>
+			<input id="searchName" type="text" placeholder="z. B. Müller" />
+		  </div>
+
+		  <div class="field">
+			<label for="searchRange">Zeitraum</label>
+			<select id="searchRange">
+			  <option value="all">Alle</option>
+			  <option value="7d">Letzte 1 Woche</option>
+			  <option value="14d">Letzte 2 Wochen</option>
+			  <option value="month">Diesen Monat</option>
+			  <option value="older">Älter</option>
+			</select>
+		  </div>
+
+		  <div class="field search-actions">
+			<button class="secondary" id="searchRefresh" type="button">Aktualisieren</button>
+		  </div>
+		</div>
+
+		<div class="table-wrap">
+		  <table class="search-table">
+			<thead>
+			  <tr>
+				<th>Kunde</th>
+				<th>Auftragsnr.</th>
+				<th>Erstellt</th>
+				<th>ID</th>
+				<th></th>
+			  </tr>
+			</thead>
+			<tbody id="searchTbody">
+			  <tr><td colspan="5" class="muted">Lade…</td></tr>
+			</tbody>
+		  </table>
+		</div>
+
+		<div class="hint" id="searchHint"></div>
+	  </div>
+	</div>
+
+  <div class="wrap">
+    <!-- LINK: Eingabe-Leiste -->
+    <div class="card">
+	<div class="h1row">
+	  <h1>Auftragsformular – Eingabe</h1>
+	  <button class="secondary" id="newBtn" type="button">Neu</button>
+	  <button class="secondary" id="searchBtn" type="button">Suchen</button>
+	</div>
+
+      <h2>Dokument</h2>
+      <div class="row">
+        <div>
+          <label>Auftragsnummer</label>
+          <input id="orderNo" placeholder="z.B. A-2026-001" />
+        </div>
+        <div>
+          <label>Datum</label>
+          <input id="orderDate" type="date" />
+        </div>
+      </div>
+
+      <h2>Kundenanschrift</h2>
+      <label>Kunde / Firma</label>
+      <input id="customerName" placeholder="Kundenname / Firma" />
+      <label>Adresse</label>
+      <textarea id="customerAddress" placeholder="Straße Hausnr.
+PLZ Ort"></textarea>
+
+      <h2>Ansprechpartner (separat)</h2>
+      <label>Name</label>
+      <input id="contactName" placeholder="Vorname Nachname" />
+      <label>E-Mail</label>
+      <input id="contactEmail" placeholder="name@kunde.de" />
+      <label>Telefon</label>
+      <input id="contactPhone" placeholder="+49 ..." />
+
+      <h2>Arbeitsbeschreibung (für den Monteur)</h2>
+      <textarea id="jobDescription" placeholder="Was soll gemacht werden?"></textarea>
+
+      <h2>Rapport / Durchführung (tatsächlich erledigt)</h2>
+      <textarea id="rapport" placeholder="Was wurde wirklich gemacht?"></textarea>
+
+      <h2>Materialliste</h2>
+      <div class="actions">
+        <button class="secondary" id="addMaterialBtn" type="button">+ Materialzeile</button>
+        <button class="secondary" id="resetMaterialBtn" type="button">Zurücksetzen</button>
+      </div>
+      <div id="materialEditor"></div>
+
+      <h2>Arbeitszeiten</h2>
+      <div class="actions">
+        <button class="secondary" id="addTimeBtn" type="button">+ Zeitzeile</button>
+        <button class="secondary" id="resetTimeBtn" type="button">Zurücksetzen</button>
+      </div>
+      <div class="hint">Gesamt ist ein Freifeld. Optional wird Gesamt automatisch gesetzt, wenn Von/Bis befüllt ist.</div>
+      <div id="timesEditor"></div>
+
+      <div class="actions">
+        <button class="secondary" id="previewBtn" type="button">Vorschau aktualisieren</button>
+		
+		<button class="secondary" id="sigCustomerBtn" type="button">Unterschrift Kunde</button>
+		<button class="secondary" id="sigTechBtn" type="button">Unterschrift Monteur</button>
+
+        <button class="secondary" id="saveBtn" type="button">Speichern</button>
+        <button class="secondary" id="copyUrlBtn" type="button">URL kopieren</button>
+
+        <button id="pdfBtn" type="button">PDF erzeugen</button>
+      </div>
+
+      <div class="hint" id="saveHint">Noch nicht gespeichert.</div>
+    </div>
+
+    <!-- RECHTS: Vorschau -->
+    <div class="card">
+      <h1>Vorschau</h1>
+
+      <div class="paper-shell">
+        <div class="paper" id="printArea">
+          <div class="head">
+            <div>
+              <div class="brand">SAG Elektrotechnik</div>
+              <div class="muted">Auftragsformular / Rapport</div>
+            </div>
+            <div class="meta">
+              <div><b>Auftragsnr.:</b> <span id="p_orderNo">—</span></div>
+              <div><b>Datum:</b> <span id="p_orderDate">—</span></div>
+            </div>
+          </div>
+
+          <div class="section grid2">
+            <div class="box">
+              <div class="box-title">Kundenanschrift</div>
+              <div class="strong12" id="p_customerName">—</div>
+              <div class="muted mt6" id="p_customerAddress">—</div>
+            </div>
+
+            <div class="box">
+              <div class="box-title">Ansprechpartner</div>
+              <div class="muted">
+                <div><b>Name:</b> <span id="p_contactName">—</span></div>
+                <div><b>E-Mail:</b> <span id="p_contactEmail">—</span></div>
+                <div><b>Telefon:</b> <span id="p_contactPhone">—</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="section box pb-avoid">
+            <div class="box-title">Arbeitsbeschreibung (geplant)</div>
+            <div id="p_jobDescription" class="prewrap12">—</div>
+          </div>
+
+          <div class="section box pb-avoid">
+            <div class="box-title">Rapport / Durchführung (tatsächlich erledigt)</div>
+            <div id="p_rapport" class="prewrap12 min70">—</div>
+          </div>
+
+          <div class="section box pb-avoid pdf-topgap">
+            <div class="box-title">Materialliste</div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Material</th>
+                  <th style="width:120px" class="right">Anzahl</th>
+                </tr>
+              </thead>
+              <tbody id="p_materialBody"></tbody>
+            </table>
+          </div>
+
+          <div class="section box pb-avoid pdf-topgap">
+            <div class="box-title">Arbeitszeiten</div>
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:140px">Datum</th>
+                  <th style="width:120px">Von</th>
+                  <th style="width:120px">Bis</th>
+                  <th style="width:120px" class="right">Gesamt</th>
+                  <th>Notiz</th>
+                </tr>
+              </thead>
+              <tbody id="p_timesBody"></tbody>
+            </table>
+          </div>
+
+			<div class="sig pdf-topgap">
+			  <div class="sigbox">
+				<div class="sigimg-wrap">
+				  <img id="p_sigCustomer" class="sigimg" />
+				</div>
+				<div class="sigline">Ort/Datum, Kunde</div>
+			  </div>
+
+			  <div class="sigbox">
+				<div class="sigimg-wrap">
+				  <img id="p_sigTech" class="sigimg" />
+				</div>
+				<div class="sigline">Ort/Datum, Monteur</div>
+			  </div>
+			</div>
+		  
+		  <div class="only-pdf pdf-link-row">
+			  <a id="p_docLink" class="pdf-link-btn" href="#" target="_blank" rel="noopener">
+				Dieses Dokument online öffnen
+			  </a>
+			  <div class="muted" id="p_docLinkText"></div>
+		  </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+	  <div id="sigModal" class="modal">
+	  <div class="modal-card">
+		<div class="modal-head">
+		  <b id="sigTitle"></b>
+		  <button id="sigClose" class="modal-x">✕</button>
+		</div>
+
+		<div class="sigpad-wrap">
+		  <canvas id="sigCanvas"></canvas>
+		</div>
+
+		<div class="modal-actions">
+		  <button class="secondary" id="sigClear">Löschen</button>
+		  <button id="sigDone">Übernehmen</button>
+		</div>
+	  </div>
+	</div>
+
+  <!-- html2pdf -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"
+          crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+  <script>
+	  const BASE_PATH = location.pathname.replace(/\/[^\/]*$/, "") || "/";
+    const el = (id) => document.getElementById(id);
+
+    // ---- Theme (Light/Dark) ----
+    const THEME_KEY = "emh_theme";
+    function applyTheme(theme) {
+      document.documentElement.setAttribute("data-theme", theme);
+      localStorage.setItem(THEME_KEY, theme);
+      const icon = el("themeIcon");
+      if (icon) icon.textContent = theme === "dark" ? "☀️" : "🌙";
+    }
+    function initThemeToggle() {
+      const saved = localStorage.getItem(THEME_KEY);
+      const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+      const initial = saved || (prefersDark ? "dark" : "light");
+      applyTheme(initial);
+
+      const btn = el("themeToggle");
+      if (btn) {
+        btn.addEventListener("click", () => {
+          const current = document.documentElement.getAttribute("data-theme") || "light";
+          applyTheme(current === "dark" ? "light" : "dark");
+        });
+      }
+    }
+
+    function todayISO() {
+      const d = new Date();
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const dd = String(d.getDate()).padStart(2, "0");
+      return `${d.getFullYear()}-${mm}-${dd}`;
+    }
+
+    function safeText(s) { return (s ?? "").toString(); }
+    function nl2br(s) { return safeText(s).replaceAll("\n", "<br>"); }
+
+    // ---- State ----
+    let materials = [{ material: "", qty: "" }];
+    let times = [{ date: "", from: "", to: "", total: "", note: "" }];
+    const AUTO_TOTAL = true;
+	let sigCustomer = "";
+	let sigTech = "";
+
+    // ---- Server-ID State ----
+    let currentId = null;
+    const ID_LEN = 6;
+
+    function generateId(len = ID_LEN) {
+      const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+      let out = "";
+      const rnd = new Uint32Array(len);
+      crypto.getRandomValues(rnd);
+      for (let i = 0; i < len; i++) out += chars[rnd[i] % chars.length];
+      return out;
+    }
+
+    function getIdFromUrl() {
+      // 1) /<ID> (Rewrite)
+      const path = location.pathname.replace(/\/+$/, "");
+      const last = path.split("/").pop() || "";
+      if (/^[A-Z0-9]{6,10}$/.test(last)) return last;
+
+      // 2) ?id=<ID> fallback
+      const qs = new URLSearchParams(location.search);
+      const qid = (qs.get("id") || "").toUpperCase();
+      if (/^[A-Z0-9]{6,10}$/.test(qid)) return qid;
+
+      return null;
+    }
+
+    function buildShareUrl(id) {
+      const u = new URL(location.href);
+      u.hash = "";
+      // Wenn du Rewrite aktiv hast, ist der kurze Pfad am schönsten:
+      // /folder/ID
+      const basePath = u.pathname.replace(/\/+$/, "").replace(/\/[A-Z0-9]{6,10}$/, "");
+      u.pathname = basePath + "/" + id;
+      u.search = ""; // sauber
+      return u.toString();
+    }
+
+    function setSaveHint(text) {
+      const h = el("saveHint");
+      if (h) h.textContent = text;
+    }
+
+    function getFormState() {
+      return {
+        orderNo: el("orderNo").value || "",
+        orderDate: el("orderDate").value || "",
+        customerName: el("customerName").value || "",
+        customerAddress: el("customerAddress").value || "",
+        contactName: el("contactName").value || "",
+        contactEmail: el("contactEmail").value || "",
+        contactPhone: el("contactPhone").value || "",
+        jobDescription: el("jobDescription").value || "",
+        rapport: el("rapport").value || "",
+        materials,
+        times,
+		sigCustomer: sigCustomer.startsWith("data:image/") ? sigCustomer : "",
+		sigTech:     sigTech.startsWith("data:image/") ? sigTech : ""
+      };
+    }
+
+    function applyFormState(s) {
+      if (!s || typeof s !== "object") return;
+
+      el("orderNo").value = s.orderNo ?? "";
+      el("orderDate").value = s.orderDate ?? "";
+      el("customerName").value = s.customerName ?? "";
+      el("customerAddress").value = s.customerAddress ?? "";
+      el("contactName").value = s.contactName ?? "";
+      el("contactEmail").value = s.contactEmail ?? "";
+      el("contactPhone").value = s.contactPhone ?? "";
+      el("jobDescription").value = s.jobDescription ?? "";
+      el("rapport").value = s.rapport ?? "";
+
+      materials = Array.isArray(s.materials) && s.materials.length ? s.materials : [{ material: "", qty: "" }];
+      times = Array.isArray(s.times) && s.times.length ? s.times : [{ date: "", from: "", to: "", total: "", note: "" }];
+	  
+		function normalizeSigPath(v) {
+		  if (!v) return "";
+		  if (v.startsWith("data:image/")) return v;
+		  if (v.startsWith("http")) return v;
+		  if (v.startsWith("/")) return BASE_PATH + v;
+		  return BASE_PATH + "/" + v;
+		}
+
+		sigCustomer = normalizeSigPath(s.sigCustomer);
+		sigTech     = normalizeSigPath(s.sigTech);
+
+      renderMaterialEditor();
+      renderTimesEditor();
+      updatePreview();
+    }
+
+    async function saveToServer() {
+      const state = getFormState();
+      const id = (currentId || generateId()).toUpperCase();
+
+      setSaveHint("Speichere…");
+
+      const res = await fetch("save.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, ...state })
+      });
+
+      if (!res.ok) {
+        setSaveHint("Speichern fehlgeschlagen.");
+        throw new Error("save.php failed: " + res.status);
+      }
+
+      const out = await res.json();
+      if (!out.ok) {
+        setSaveHint("Speichern fehlgeschlagen.");
+        throw new Error(out.error || "save not ok");
+      }
+
+      currentId = out.id;
+
+      // URL schön setzen (Rewrite) – falls Rewrite nicht aktiv ist, bleibt es trotzdem gültig,
+      // weil wir beim Laden auch ?id= können (du kannst das optional aktiv nutzen).
+      const share = buildShareUrl(currentId);
+      history.replaceState(null, "", share);
+
+      setSaveHint("Gespeichert: " + currentId);
+      return currentId;
+    }
+
+    async function loadFromServer(id) {
+      setSaveHint("Lade " + id + "…");
+      const res = await fetch(`load.php?id=${encodeURIComponent(id)}`, { cache: "no-store" });
+      if (!res.ok) {
+        setSaveHint("ID nicht gefunden: " + id);
+        return false;
+      }
+      const data = await res.json();
+      applyFormState(data);
+      currentId = id;
+	  updatePreview();
+      setSaveHint("Geladen: " + id);
+      return true;
+    }
+
+    async function copyShareUrl() {
+      if (!currentId) {
+        await saveToServer();
+      }
+      const url = buildShareUrl(currentId);
+      await navigator.clipboard.writeText(url);
+      setSaveHint("URL kopiert: " + currentId);
+    }
+
+    function calcTotal(from, to) {
+      if (!from || !to) return "";
+      const [fh, fm] = from.split(":").map(Number);
+      const [th, tm] = to.split(":").map(Number);
+      if ([fh, fm, th, tm].some(n => Number.isNaN(n))) return "";
+      let start = fh * 60 + fm;
+      let end = th * 60 + tm;
+      if (end < start) end += 24 * 60;
+      const diff = end - start;
+      const h = Math.floor(diff / 60);
+      const m = diff % 60;
+      return `${h}:${String(m).padStart(2, "0")}`;
+    }
+
+    // ---- Editors (no rerender on typing) ----
+    function renderMaterialEditor() {
+      const wrap = el("materialEditor");
+      wrap.innerHTML = "";
+
+      materials.forEach((it, idx) => {
+        const row = document.createElement("div");
+        row.className = "miniCard";
+        row.innerHTML = `
+          <div class="row">
+            <div style="flex:2">
+              <label>Material</label>
+              <input data-mk="material" data-mi="${idx}" value="${safeText(it.material).replaceAll('"','&quot;')}" />
+            </div>
+            <div>
+              <label>Anzahl</label>
+              <input data-mk="qty" data-mi="${idx}" value="${safeText(it.qty).replaceAll('"','&quot;')}" />
+            </div>
+          </div>
+          <div class="actions">
+            <button class="secondary" type="button" data-mdel="${idx}">Zeile löschen</button>
+          </div>
+        `;
+        wrap.appendChild(row);
+      });
+
+      wrap.oninput = onMaterialInput;
+      wrap.onclick = onMaterialClick;
+    }
+
+    function onMaterialInput(e) {
+      const t = e.target;
+      const idx = Number(t.getAttribute("data-mi"));
+      const key = t.getAttribute("data-mk");
+      if (Number.isNaN(idx) || !key) return;
+      materials[idx][key] = t.value;
+      updatePreview();
+    }
+
+    function onMaterialClick(e) {
+      const del = e.target.getAttribute("data-mdel");
+      if (del === null) return;
+      materials.splice(Number(del), 1);
+      if (!materials.length) materials.push({ material: "", qty: "" });
+      renderMaterialEditor();
+      updatePreview();
+    }
+
+    function renderTimesEditor() {
+      const wrap = el("timesEditor");
+      wrap.innerHTML = "";
+
+      times.forEach((it, idx) => {
+        const row = document.createElement("div");
+        row.className = "miniCard";
+        row.innerHTML = `
+          <div class="row">
+            <div>
+              <label>Datum</label>
+              <input type="date" data-tk="date" data-ti="${idx}" value="${safeText(it.date)}" />
+            </div>
+            <div>
+              <label>Von</label>
+              <input type="time" data-tk="from" data-ti="${idx}" value="${safeText(it.from)}" />
+            </div>
+            <div>
+              <label>Bis</label>
+              <input type="time" data-tk="to" data-ti="${idx}" value="${safeText(it.to)}" />
+            </div>
+            <div>
+              <label>Gesamt</label>
+              <input placeholder="z.B. 2:30" data-tk="total" data-ti="${idx}" value="${safeText(it.total).replaceAll('"','&quot;')}" />
+            </div>
+          </div>
+          <label>Notiz</label>
+          <input placeholder="z.B. EG, Störungssuche..." data-tk="note" data-ti="${idx}" value="${safeText(it.note).replaceAll('"','&quot;')}" />
+          <div class="actions">
+            <button class="secondary" type="button" data-tdel="${idx}">Zeile löschen</button>
+          </div>
+        `;
+        wrap.appendChild(row);
+      });
+
+      wrap.oninput = onTimesInput;
+      wrap.onclick = onTimesClick;
+    }
+
+    function onTimesInput(e) {
+      const t = e.target;
+      const idx = Number(t.getAttribute("data-ti"));
+      const key = t.getAttribute("data-tk");
+      if (Number.isNaN(idx) || !key) return;
+
+      times[idx][key] = t.value;
+
+      if (AUTO_TOTAL && (key === "from" || key === "to")) {
+        const auto = calcTotal(times[idx].from, times[idx].to);
+        if (auto) {
+          times[idx].total = auto;
+          const totalInput = document.querySelector(`input[data-tk="total"][data-ti="${idx}"]`);
+          if (totalInput && document.activeElement !== totalInput) totalInput.value = auto;
+        }
+      }
+
+      updatePreview();
+    }
+
+    function onTimesClick(e) {
+      const del = e.target.getAttribute("data-tdel");
+      if (del === null) return;
+
+      times.splice(Number(del), 1);
+      if (!times.length) times.push({ date: "", from: "", to: "", total: "", note: "" });
+      renderTimesEditor();
+      updatePreview();
+    }
+
+    // ---- Preview ----
+    function updatePreview() {
+      el("p_orderNo").textContent = el("orderNo").value || "—";
+      const d = el("orderDate").value;
+      el("p_orderDate").textContent = d ? new Date(d).toLocaleDateString("de-DE") : "—";
+
+      el("p_customerName").textContent = el("customerName").value || "—";
+      el("p_customerAddress").innerHTML = el("customerAddress").value ? nl2br(el("customerAddress").value) : "—";
+
+      el("p_contactName").textContent = el("contactName").value || "—";
+      el("p_contactEmail").textContent = el("contactEmail").value || "—";
+      el("p_contactPhone").textContent = el("contactPhone").value || "—";
+
+      el("p_jobDescription").textContent = el("jobDescription").value || "—";
+      el("p_rapport").textContent = el("rapport").value || "—";
+
+      const mb = el("p_materialBody");
+      mb.innerHTML = "";
+      const hasAnyMaterial = materials.some(m => (m.material || "").trim() || (m.qty || "").trim());
+      if (!hasAnyMaterial) {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td colspan="2" class="muted">—</td>`;
+        mb.appendChild(tr);
+      } else {
+        materials.forEach(it => {
+          if (!safeText(it.material).trim() && !safeText(it.qty).trim()) return;
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td style="white-space:pre-wrap">${safeText(it.material).replaceAll("<","&lt;") || "—"}</td>
+            <td class="right">${safeText(it.qty).replaceAll("<","&lt;") || "—"}</td>
+          `;
+          mb.appendChild(tr);
+        });
+      }
+
+      const tb = el("p_timesBody");
+      tb.innerHTML = "";
+      const hasAnyTime = times.some(t =>
+        (t.date || "").trim() || (t.from || "").trim() || (t.to || "").trim() ||
+        (t.total || "").trim() || (t.note || "").trim()
+      );
+
+      if (!hasAnyTime) {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td colspan="5" class="muted">—</td>`;
+        tb.appendChild(tr);
+      } else {
+        times.forEach(it => {
+          if (!(it.date || it.from || it.to || it.total || it.note)) return;
+          const tr = document.createElement("tr");
+          const dateText = it.date ? new Date(it.date).toLocaleDateString("de-DE") : "—";
+          tr.innerHTML = `
+            <td>${dateText}</td>
+            <td>${safeText(it.from) || "—"}</td>
+            <td>${safeText(it.to) || "—"}</td>
+            <td class="right">${safeText(it.total) || "—"}</td>
+            <td style="white-space:pre-wrap">${safeText(it.note).replaceAll("<","&lt;") || "—"}</td>
+          `;
+          tb.appendChild(tr);
+        });
+      }
+	// --- PDF-Link Button setzen ---
+		const linkEl = el("p_docLink");
+		const linkTextEl = el("p_docLinkText");
+
+		if (linkEl) {
+		  if (currentId) {
+			const url = buildShareUrl(currentId);
+			linkEl.href = url;
+			if (linkTextEl) linkTextEl.textContent = url;
+		  } else {
+			linkEl.href = "#";
+			if (linkTextEl) linkTextEl.textContent = "Hinweis: Dokument ist noch nicht gespeichert.";
+		  }
+		}
+		function setSigImage(img, src) {
+		  if (!img || !src) {
+			img.style.display = "none";
+			img.removeAttribute("src");
+			return;
+		  }
+
+		  img.style.display = "block";
+
+		  // Cache-Busting NUR bei Datei-URLs
+		  if (src.startsWith("data:image/")) {
+			img.src = src;
+		  } else {
+			img.src = src + "?v=" + Date.now();
+		  }
+		}
+
+		// --- am Ende von updatePreview() ---
+		setSigImage(el("p_sigCustomer"), sigCustomer);
+		setSigImage(el("p_sigTech"), sigTech);
+
+    }
+
+    // ---- PDF (neuer Tab) ----
+	async function generatePDF() {
+	  updatePreview();
+
+	  // --- IMMER Auto-Save: gleiche ID wird überschrieben ---
+	  try {
+		await saveToServer();  // nutzt currentId, falls vorhanden; sonst neue ID
+		updatePreview();       // damit p_docLink/p_docLinkText sicher aktuell sind
+	  } catch (e) {
+		console.error(e);
+		alert("Auto-Save fehlgeschlagen. PDF wurde nicht erzeugt.");
+		return;
+	  }
+
+	  const orderNo = (el("orderNo").value || "").trim();
+	  const filename = orderNo ? `Auftrag_${orderNo}.pdf` : `Auftrag.pdf`;
+	  const printEl = el("printArea");
+
+	  const popup = window.open("", "_blank");
+	  if (!popup) {
+		alert("Popup wurde blockiert. Bitte Popups erlauben, damit das PDF in einem neuen Tab geöffnet werden kann.");
+		return;
+	  }
+	  popup.document.title = filename;
+	  popup.document.body.innerHTML = "PDF wird erzeugt…";
+
+	  try { popup.blur(); } catch {}
+	  try { window.focus(); } catch {}
+
+	  // PDF-Mode: nur Optik (keine Layout-Klemmung!)
+	  document.body.classList.add("pdf-mode");
+
+	  // NICHT requestAnimationFrame (kann im Hintergrund tab pausieren)
+	  await new Promise(r => setTimeout(r, 0));
+	  await new Promise(r => setTimeout(r, 0));
+
+	  // --- Einseiten-Erkennung ---
+	  const widthPx = Math.ceil(printEl.getBoundingClientRect().width);
+	  const a4HeightPx = Math.ceil(widthPx * (297 / 210));
+	  const contentHeightPx = Math.ceil(printEl.scrollHeight);
+	  const fitsOnePage = contentHeightPx <= (a4HeightPx + 80);
+
+	  const opt = {
+		margin: 0,
+		filename,
+
+		// Links im PDF klickbar machen (für deinen "Dokument öffnen" Button)
+		enableLinks: true,
+
+		image: { type: "jpeg", quality: 0.98 },
+		html2canvas: {
+		  scale: 2,
+		  useCORS: true,
+		  backgroundColor: "#ffffff",
+		  scrollX: 0,
+		  scrollY: 0
+		},
+		jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+		pagebreak: { mode: ["css", "legacy"] }
+	  };
+
+	  try {
+		const worker = html2pdf().set(opt).from(printEl);
+
+		await worker.toPdf().get("pdf").then((pdf) => {
+		  // leere Seite 2 entfernen, wenn es eigentlich 1 Seite ist
+		  if (fitsOnePage) {
+			const pages = pdf.internal.getNumberOfPages();
+			for (let p = pages; p >= 2; p--) pdf.deletePage(p);
+		  }
+
+		  const blob = pdf.output("blob");
+		  const url = URL.createObjectURL(blob);
+
+		  popup.location.href = url;
+		  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+		});
+
+	  } finally {
+		document.body.classList.remove("pdf-mode");
+	  }
+	}
+
+	let sigTarget = "customer";
+	let drawing = false, lx = 0, ly = 0;
+
+	function openSig(target) {
+	  sigTarget = target;
+	  el("sigTitle").textContent =
+		target === "customer" ? "Unterschrift Kunde" : "Unterschrift Monteur";
+	  el("sigModal").classList.add("open");
+	  setupCanvas();
+	}
+
+	let sigScale = 1;
+
+	function setupCanvas() {
+	  const c = el("sigCanvas");
+	  const rect = c.getBoundingClientRect();
+	  const dpr = window.devicePixelRatio || 1;
+
+	  sigScale = dpr;
+
+	  c.width  = Math.floor(rect.width * dpr);
+	  c.height = Math.floor(rect.height * dpr);
+
+	  const ctx = c.getContext("2d");
+	  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); // <<< WICHTIG
+	  ctx.fillStyle = "#fff";
+	  ctx.fillRect(0, 0, rect.width, rect.height);
+
+	  ctx.strokeStyle = "#000";
+	  ctx.lineWidth = 8;
+	  ctx.lineCap = "round";
+	  ctx.lineJoin = "round";
+	  ctx.miterLimit = 1;
+	}
+
+	function pos(e) {
+	  const r = el("sigCanvas").getBoundingClientRect();
+	  const p = e.touches ? e.touches[0] : e;
+	  return {
+		x: p.clientX - r.left,
+		y: p.clientY - r.top
+	  };
+	}
+
+	function start(e){ drawing=true; const p=pos(e); lx=p.x; ly=p.y; }
+	function move(e){
+	  if(!drawing) return;
+	  const ctx = el("sigCanvas").getContext("2d");
+	  const p = pos(e);
+	  ctx.beginPath();
+	  ctx.moveTo(lx,ly);
+	  ctx.lineTo(p.x,p.y);
+	  ctx.stroke();
+	  lx=p.x; ly=p.y;
+	}
+	function end(){ drawing=false; }
+
+	function commitSig(){
+	  const data = el("sigCanvas").toDataURL("image/jpeg", 0.6);
+	  if (sigTarget === "customer") sigCustomer = data;
+	  else sigTech = data;
+	  updatePreview();
+	  el("sigModal").classList.remove("open");
+	}
+	
+	// SUCH FUNKTION
+		// Basis-Pfad (damit /auftrag/XYZ & /auftrag/index.html beide funktionieren)
+
+	let allOrders = [];
+
+	function openSearchModal() {
+	  const m = el("searchModal");
+	  m.classList.add("open");
+	  m.setAttribute("aria-hidden", "false");
+	}
+
+	function closeSearchModal() {
+	  const m = el("searchModal");
+	  m.classList.remove("open");
+	  m.setAttribute("aria-hidden", "true");
+	}
+
+	function fmtDate(ts) {
+	  try {
+		return new Date(ts * 1000).toLocaleString();
+	  } catch {
+		return "";
+	  }
+	}
+
+	function inRange(createdTs, rangeKey) {
+	  if (rangeKey === "all") return true;
+
+	  const now = new Date();
+	  const created = new Date(createdTs * 1000);
+
+	  const diffMs = now.getTime() - created.getTime();
+	  const diffDays = diffMs / (1000 * 60 * 60 * 24);
+
+	  if (rangeKey === "7d")  return diffDays <= 7;
+	  if (rangeKey === "14d") return diffDays <= 14;
+
+	  if (rangeKey === "month") {
+		return created.getFullYear() === now.getFullYear() &&
+			   created.getMonth() === now.getMonth();
+	  }
+
+	  if (rangeKey === "older") {
+		// älter = vor diesem Monat
+		const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+		return created < startOfThisMonth;
+	  }
+
+	  return true;
+	}
+
+	function fmtOrderDate(orderDate, createdTs) {
+	  // bevorzugt orderDate aus JSON (YYYY-MM-DD)
+	  if (orderDate && /^\d{4}-\d{2}-\d{2}$/.test(orderDate)) {
+		const d = new Date(orderDate + "T00:00:00");
+		return d.toLocaleDateString();
+	  }
+
+	  // Fallback: createdTs (unix seconds)
+	  try {
+		return new Date(createdTs * 1000).toLocaleDateString();
+	  } catch {
+		return "";
+	  }
+	}
+
+	function renderSearchTable() {
+	  const tbody = el("searchTbody");
+	  const q = (el("searchName").value || "").trim().toLowerCase();
+	  const rangeKey = el("searchRange").value;
+
+	  const filtered = allOrders.filter(it => {
+		const name = (it.customerName || "").toLowerCase();
+		const orderNo = (it.orderNo || "").toLowerCase();
+		const id = (it.id || "").toLowerCase();
+
+		const matchesName = !q || name.includes(q) || orderNo.includes(q) || id.includes(q);
+		const matchesRange = inRange(it.createdTs, rangeKey);
+		return matchesName && matchesRange;
+	  });
+
+	  el("searchHint").textContent = `${filtered.length} Treffer`;
+
+	  if (filtered.length === 0) {
+		tbody.innerHTML = `<tr><td colspan="5" class="muted">Keine Treffer</td></tr>`;
+		return;
+	  }
+
+	  tbody.innerHTML = filtered.map(it => {
+		const customer = it.customerName || "—";
+		const orderNo = it.orderNo || "—";
+		const created = fmtOrderDate(it.orderDate, it.createdTs);
+		const id = it.id;
+
+		// Ziel-URL: /auftrag/ID (ohne DB, per file)
+		const url = `${BASE_PATH}/${encodeURIComponent(id)}`;
+
+		return `
+		  <tr>
+			<td>${escapeHtml(customer)}</td>
+			<td>${escapeHtml(orderNo)}</td>
+			<td>${escapeHtml(created)}</td>
+			<td><code>${escapeHtml(id)}</code></td>
+			<td class="td-actions">
+			  <button class="secondary" type="button" data-open="${url}">Öffnen</button>
+			</td>
+		  </tr>
+		`;
+	  }).join("");
+
+	  // Delegation für Öffnen-Buttons
+	  tbody.querySelectorAll("button[data-open]").forEach(btn => {
+		btn.addEventListener("click", () => {
+		  const url = btn.getAttribute("data-open");
+		  window.location.href = url;
+		});
+	  });
+	}
+
+	// XSS-sicheres Escaping
+	function escapeHtml(str) {
+	  return String(str).replace(/[&<>"']/g, (m) => ({
+		"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
+	  }[m]));
+	}
+
+	async function fetchOrdersList() {
+	  const tbody = el("searchTbody");
+	  tbody.innerHTML = `<tr><td colspan="5" class="muted">Lade…</td></tr>`;
+	  el("searchHint").textContent = "";
+
+	  try {
+		const res = await fetch(`${BASE_PATH}/list.php`, { cache: "no-store" });
+		if (!res.ok) throw new Error("list.php HTTP " + res.status);
+		const data = await res.json();
+		if (!data.ok) throw new Error("list.php not ok");
+
+		allOrders = Array.isArray(data.items) ? data.items : [];
+		renderSearchTable();
+	  } catch (e) {
+		console.error(e);
+		tbody.innerHTML = `<tr><td colspan="5" class="muted">Fehler beim Laden der Liste</td></tr>`;
+		el("searchHint").textContent = "Konnte list.php nicht laden (Konsole prüfen).";
+	  }
+	}
+
+	// Events (z. B. in init() oder direkt nach Script-Load)
+	el("searchBtn").addEventListener("click", async () => {
+	  openSearchModal();
+	  await fetchOrdersList();
+	});
+
+	el("searchClose").addEventListener("click", closeSearchModal);
+	el("searchModal").addEventListener("click", (e) => {
+	  if (e.target === el("searchModal")) closeSearchModal();
+	});
+
+	el("searchRefresh").addEventListener("click", fetchOrdersList);
+	el("searchName").addEventListener("input", renderSearchTable);
+	el("searchRange").addEventListener("change", renderSearchTable);
+	
+		el("newBtn").addEventListener("click", () => {
+	  // Basis-Pfad ohne ID / Query
+	  const base = location.origin + BASE_PATH;
+	  window.location.href = base;
+	});
+
+
+
+    // ---- Init ----
+    async function init() {
+      el("orderDate").value = todayISO();
+
+      el("addMaterialBtn").addEventListener("click", () => {
+        materials.push({ material: "", qty: "" });
+        renderMaterialEditor();
+        updatePreview();
+      });
+
+      el("resetMaterialBtn").addEventListener("click", () => {
+        materials = [{ material: "", qty: "" }];
+        renderMaterialEditor();
+        updatePreview();
+      });
+
+      el("addTimeBtn").addEventListener("click", () => {
+        times.push({ date: "", from: "", to: "", total: "", note: "" });
+        renderTimesEditor();
+        updatePreview();
+      });
+
+      el("resetTimeBtn").addEventListener("click", () => {
+        times = [{ date: "", from: "", to: "", total: "", note: "" }];
+        renderTimesEditor();
+        updatePreview();
+      });
+
+      el("previewBtn").addEventListener("click", updatePreview);
+      el("pdfBtn").addEventListener("click", generatePDF);
+
+      el("saveBtn").addEventListener("click", async () => {
+        try { await saveToServer(); } catch (e) { console.error(e); alert("Speichern fehlgeschlagen."); }
+      });
+
+      el("copyUrlBtn").addEventListener("click", async () => {
+        try { await copyShareUrl(); } catch (e) { console.error(e); alert("URL kopieren fehlgeschlagen."); }
+      });
+
+      ["orderNo","orderDate","customerName","customerAddress","contactName","contactEmail","contactPhone","jobDescription","rapport"]
+        .forEach(id => el(id).addEventListener("input", updatePreview));
+
+      initThemeToggle();
+      renderMaterialEditor();
+      renderTimesEditor();
+      updatePreview();
+	  
+	  el("sigCustomerBtn").onclick = () => openSig("customer");
+		el("sigTechBtn").onclick = () => openSig("tech");
+		el("sigClose").onclick = () => el("sigModal").classList.remove("open");
+		el("sigClear").onclick = setupCanvas;
+		el("sigDone").onclick = commitSig;
+
+		const c = el("sigCanvas");
+		c.addEventListener("mousedown", start);
+		c.addEventListener("mousemove", move);
+		window.addEventListener("mouseup", end);
+		c.addEventListener("touchstart", start, { passive:false });
+		c.addEventListener("touchmove", move, { passive:false });
+		c.addEventListener("touchend", end, { passive:false });
+
+
+      // Auto-load from URL
+      const id = getIdFromUrl();
+      if (id) {
+        currentId = id;
+        await loadFromServer(id);
+        // URL sauber halten
+        history.replaceState(null, "", buildShareUrl(id));
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>
