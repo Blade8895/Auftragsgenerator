@@ -254,6 +254,19 @@ PLZ Ort"></textarea>
 	  </div>
 	</div>
 
+		<div id="sigOverwriteModal" class="modal" aria-hidden="true">
+		  <div class="modal-card modal-confirm">
+			<div class="modal-head">
+			  <b>Unterschrift überschreiben?</b>
+			</div>
+			<div id="sigOverwriteText" class="mt8"></div>
+			<div class="modal-actions">
+			  <button class="secondary" id="sigOverwriteCancel" type="button">Abbrechen</button>
+			  <button id="sigOverwriteConfirm" type="button">Ja, überschreiben/löschen</button>
+			</div>
+		  </div>
+		</div>
+
   <!-- html2pdf -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"
           crossorigin="anonymous" referrerpolicy="no-referrer"></script>
@@ -399,35 +412,48 @@ PLZ Ort"></textarea>
       updatePreview();
     }
 
-    function askSignatureConfirmation() {
-      const confirmations = {
-        confirmOverwriteSigCustomer: false,
-        confirmOverwriteSigTech: false
+    function createConfirmFlags(flags = {}) {
+      return {
+        confirmOverwriteSigCustomer: !!flags.confirmOverwriteSigCustomer,
+        confirmOverwriteSigTech: !!flags.confirmOverwriteSigTech
       };
-
-      if (loadedSigCustomer && sigCustomer !== loadedSigCustomer) {
-        const ok = window.confirm("Kunden-Unterschrift existiert bereits. Wirklich löschen oder überschreiben?");
-        if (!ok) return null;
-        confirmations.confirmOverwriteSigCustomer = true;
-      }
-
-      if (loadedSigTech && sigTech !== loadedSigTech) {
-        const ok = window.confirm("Monteur-Unterschrift existiert bereits. Wirklich löschen oder überschreiben?");
-        if (!ok) return null;
-        confirmations.confirmOverwriteSigTech = true;
-      }
-
-      return confirmations;
     }
 
-    async function saveToServer() {
+    function requestSignatureOverwriteConfirmation(field) {
+      const modal = el("sigOverwriteModal");
+      const text = el("sigOverwriteText");
+      const btnCancel = el("sigOverwriteCancel");
+      const btnConfirm = el("sigOverwriteConfirm");
+
+      if (!modal || !text || !btnCancel || !btnConfirm) {
+        return Promise.resolve(false);
+      }
+
+      text.textContent = field === "sigCustomer"
+        ? "Für die Kunden-Unterschrift existiert bereits eine Datei. Bitte bestätigen Sie das Löschen/Überschreiben."
+        : "Für die Monteur-Unterschrift existiert bereits eine Datei. Bitte bestätigen Sie das Löschen/Überschreiben.";
+
+      modal.classList.add("open");
+      modal.setAttribute("aria-hidden", "false");
+
+      return new Promise((resolve) => {
+        const close = (result) => {
+          modal.classList.remove("open");
+          modal.setAttribute("aria-hidden", "true");
+          btnCancel.onclick = null;
+          btnConfirm.onclick = null;
+          resolve(result);
+        };
+
+        btnCancel.onclick = () => close(false);
+        btnConfirm.onclick = () => close(true);
+      });
+    }
+
+    async function saveToServer(confirmFlags = {}) {
       const state = getFormState();
       const id = (currentId || generateId()).toUpperCase();
-      const sigConfirmations = askSignatureConfirmation();
-      if (!sigConfirmations) {
-        setSaveHint("Speichern abgebrochen.");
-        return null;
-      }
+      const sigConfirmations = createConfirmFlags(confirmFlags);
 
       setSaveHint("Speichere…");
 
@@ -436,6 +462,24 @@ PLZ Ort"></textarea>
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, ...state, ...sigConfirmations })
       });
+
+      if (res.status === 409) {
+        let conflict = null;
+        try { conflict = await res.json(); } catch {}
+
+        if (conflict && conflict.error === "signature_confirmation_required") {
+          const allowed = await requestSignatureOverwriteConfirmation(conflict.field);
+          if (!allowed) {
+            setSaveHint("Speichern abgebrochen.");
+            return null;
+          }
+
+          const retryFlags = createConfirmFlags(sigConfirmations);
+          if (conflict.field === "sigCustomer") retryFlags.confirmOverwriteSigCustomer = true;
+          if (conflict.field === "sigTech") retryFlags.confirmOverwriteSigTech = true;
+          return saveToServer(retryFlags);
+        }
+      }
 
       if (!res.ok) {
         setSaveHint("Speichern fehlgeschlagen.");
@@ -478,7 +522,8 @@ PLZ Ort"></textarea>
 
     async function copyShareUrl() {
       if (!currentId) {
-        await saveToServer();
+        const savedId = await saveToServer();
+        if (!savedId) return;
       }
       const url = buildShareUrl(currentId);
       await navigator.clipboard.writeText(url);
@@ -720,7 +765,11 @@ PLZ Ort"></textarea>
 
 	  // --- IMMER Auto-Save: gleiche ID wird überschrieben ---
 	  try {
-		await saveToServer();  // nutzt currentId, falls vorhanden; sonst neue ID
+		const savedId = await saveToServer();  // nutzt currentId, falls vorhanden; sonst neue ID
+		if (!savedId) {
+		  alert("PDF-Erzeugung abgebrochen.");
+		  return;
+		}
 		updatePreview();       // damit p_docLink/p_docLinkText sicher aktuell sind
 	  } catch (e) {
 		console.error(e);

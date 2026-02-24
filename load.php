@@ -16,6 +16,13 @@ function resolveDataDir(string $root): array {
   return [$lower, "data"];
 }
 
+function detectWebBasePath(): string {
+  $scriptName = (string)($_SERVER['SCRIPT_NAME'] ?? '/');
+  $dir = str_replace('\\', '/', dirname($scriptName));
+  if ($dir === '.' || $dir === '/') return '';
+  return rtrim($dir, '/');
+}
+
 [$dir, $dirWeb] = resolveDataDir(__DIR__);
 $file = "$dir/$id.json";
 if (!file_exists($file)) {
@@ -29,7 +36,7 @@ if (!is_array($data)) {
   exit;
 }
 
-$base = "/$dirWeb/";
+$base = detectWebBasePath() . "/$dirWeb/";
 $data["sigCustomer"] = !empty($data["sigCustomerFile"])
   ? $base . $data["sigCustomerFile"]
   : "";
