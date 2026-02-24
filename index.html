@@ -301,6 +301,8 @@ PLZ Ort"></textarea>
     const AUTO_TOTAL = true;
 	let sigCustomer = "";
 	let sigTech = "";
+	let loadedSigCustomer = "";
+	let loadedSigTech = "";
 
     // ---- Server-ID State ----
     let currentId = null;
@@ -358,8 +360,8 @@ PLZ Ort"></textarea>
         rapport: el("rapport").value || "",
         materials,
         times,
-		sigCustomer: sigCustomer.startsWith("data:image/") ? sigCustomer : "",
-		sigTech:     sigTech.startsWith("data:image/") ? sigTech : ""
+		sigCustomer,
+		sigTech
       };
     }
 
@@ -383,28 +385,56 @@ PLZ Ort"></textarea>
 		  if (!v) return "";
 		  if (v.startsWith("data:image/")) return v;
 		  if (v.startsWith("http")) return v;
-		  if (v.startsWith("/")) return BASE_PATH + v;
+		  if (v.startsWith("/")) return v;
 		  return BASE_PATH + "/" + v;
 		}
 
 		sigCustomer = normalizeSigPath(s.sigCustomer);
 		sigTech     = normalizeSigPath(s.sigTech);
+		loadedSigCustomer = sigCustomer;
+		loadedSigTech = sigTech;
 
       renderMaterialEditor();
       renderTimesEditor();
       updatePreview();
     }
 
+    function askSignatureConfirmation() {
+      const confirmations = {
+        confirmOverwriteSigCustomer: false,
+        confirmOverwriteSigTech: false
+      };
+
+      if (loadedSigCustomer && sigCustomer !== loadedSigCustomer) {
+        const ok = window.confirm("Kunden-Unterschrift existiert bereits. Wirklich löschen oder überschreiben?");
+        if (!ok) return null;
+        confirmations.confirmOverwriteSigCustomer = true;
+      }
+
+      if (loadedSigTech && sigTech !== loadedSigTech) {
+        const ok = window.confirm("Monteur-Unterschrift existiert bereits. Wirklich löschen oder überschreiben?");
+        if (!ok) return null;
+        confirmations.confirmOverwriteSigTech = true;
+      }
+
+      return confirmations;
+    }
+
     async function saveToServer() {
       const state = getFormState();
       const id = (currentId || generateId()).toUpperCase();
+      const sigConfirmations = askSignatureConfirmation();
+      if (!sigConfirmations) {
+        setSaveHint("Speichern abgebrochen.");
+        return null;
+      }
 
       setSaveHint("Speichere…");
 
       const res = await fetch("save.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, ...state })
+        body: JSON.stringify({ id, ...state, ...sigConfirmations })
       });
 
       if (!res.ok) {
@@ -419,6 +449,8 @@ PLZ Ort"></textarea>
       }
 
       currentId = out.id;
+      loadedSigCustomer = sigCustomer;
+      loadedSigTech = sigTech;
 
       // URL schön setzen (Rewrite) – falls Rewrite nicht aktiv ist, bleibt es trotzdem gültig,
       // weil wir beim Laden auch ?id= können (du kannst das optional aktiv nutzen).
