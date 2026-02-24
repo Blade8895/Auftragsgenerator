@@ -370,6 +370,10 @@ body.pdf-mode #p_docLinkText {
   width:min(980px, 100%);
 }
 
+.modal-confirm {
+  max-width: 520px;
+}
+
 .search-controls{
   display:grid;
   grid-template-columns: 1fr 220px 160px;
